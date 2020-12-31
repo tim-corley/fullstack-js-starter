@@ -1,0 +1,59 @@
+version: '3'
+
+services:
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    image: nodejs
+    container_name: node-api
+    restart: unless-stopped
+    env_file: ./.env
+    environment:
+      - MONGO_USERNAME=$MONGO_USERNAME
+      - MONGO_PASSWORD=$MONGO_PASSWORD
+      - MONGO_HOSTNAME=db
+      - MONGO_PORT=$MONGO_PORT
+      - MONGO_DB=$MONGO_DB
+    ports:
+      - '3000:3000'
+    volumes:
+      - ./api:/usr/src/app
+      - node_modules:/usr/src/app/node_modules
+    networks:
+      - app-network
+    depends_on:
+      - 'db'
+    command: ./wait-for.sh db:27017 -- /usr/src/app/node_modules/.bin/nodemon server.js
+  db:
+    image: mongo:4.1.8-xenial
+    container_name: mongo-db
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=$MONGO_USERNAME
+      - MONGO_INITDB_ROOT_PASSWORD=$MONGO_PASSWORD
+    volumes:
+      - dbdata:/data/db
+    networks:
+      - app-network
+  ui:
+    build:
+      context: ./ui
+      dockerfile: Dockerfile
+    container_name: react-ui
+    volumes:
+      - ./ui:/usr/src/app
+      - node_modules:/usr/src/app/node_modules
+    ports:
+      - '8081:8081'
+    networks:
+      - app-network
+    depends_on:
+      - 'api'
+networks:
+  app-network:
+    driver: bridge
+volumes:
+  dbdata:
+  node_modules:
